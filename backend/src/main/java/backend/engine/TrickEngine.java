@@ -12,6 +12,7 @@ public class TrickEngine {
     private final Trick trick;
     private final List<Player> players;
     private final Suit trumpSuit;
+    private Round round;
 
     private int currentTurnIndex;
 
@@ -19,9 +20,10 @@ public class TrickEngine {
     // CONSTRUCTOR
     // =====================================================
 
-    public TrickEngine(Trick trick,
-                       List<Player> players,
-                       Suit trumpSuit) {
+    public TrickEngine(
+            Trick trick,
+            List<Player> players,
+            Suit trumpSuit) {
 
         this.trick = trick;
         this.players = players;
@@ -30,26 +32,28 @@ public class TrickEngine {
         trick.setTrumpSuit(trumpSuit);
     }
 
+    public void setRound(Round round) {
+        this.round = round;
+    }
+
     // =====================================================
     // START TRICK
     // =====================================================
 
     public void startTrick(Player leader) {
 
-        int idx = players.indexOf(leader);
+        int index = players.indexOf(leader);
 
-        if (idx == -1) {
-            throw new IllegalArgumentException("Leader not found");
+        if (index == -1) {
+            throw new IllegalArgumentException(
+                    "Leader not found");
         }
 
-        trick.getPlayedCards().clear();
+        trick.clear();
+        trick.setTrumpSuit(trumpSuit);
         trick.setLeader(leader);
-        trick.setLeadSuit(null);
-        trick.setWinner(null);
-        trick.setPoints(0);
-        trick.setState(TrickState.OPEN);
 
-        currentTurnIndex = idx;
+        currentTurnIndex = index;
     }
 
     // =====================================================
@@ -59,48 +63,64 @@ public class TrickEngine {
     public void playCard(Player player, Card card) {
 
         if (trick.getState() != TrickState.OPEN) {
-            throw new IllegalStateException("Trick already completed");
+            throw new IllegalStateException(
+                    "Trick already completed");
         }
 
         Player expected = players.get(currentTurnIndex);
 
         if (!expected.equals(player)) {
+
             throw new IllegalStateException(
                     "Expected "
                             + expected.getName()
                             + " but got "
-                            + player.getName()
-            );
+                            + player.getName());
         }
 
         if (!player.getHand().contains(card)) {
-            throw new InvalidMoveException("Card not in hand");
+
+            throw new InvalidMoveException(
+                    "Card not in player's hand");
         }
 
-        // follow suit
+        if (trick.getPlayedCards().containsKey(player)) {
+
+            throw new InvalidMoveException(
+                    "Player already played");
+        }
+
+        // Must follow suit
 
         if (!trick.getPlayedCards().isEmpty()) {
 
-            Suit lead = trick.getLeadSuit();
+            Suit leadSuit = trick.getLeadSuit();
 
-            if (player.hasSuit(lead) && card.getSuit() != lead) {
+            if (player.hasSuit(leadSuit)
+                    && card.getSuit() != leadSuit) {
+
                 throw new InvalidMoveException(
-                        "Must follow lead suit"
-                );
+                        "Must follow lead suit");
             }
         }
 
-        // first card
+        // First card sets lead suit
 
         if (trick.getPlayedCards().isEmpty()) {
+
             trick.setLeadSuit(card.getSuit());
         }
 
         player.playCard(card);
 
-        trick.getPlayedCards().put(player, card);
+        trick.addPlayedCard(player, card);
+        
+        if (round != null) {
+            String message = player.getName() + " played " + card;
+            round.addEvent(new GameEvent("CARD_PLAYED", message, player.getName()));
+        }
 
-        // trick over
+        // Trick complete
 
         if (trick.getPlayedCards().size() == players.size()) {
 
@@ -110,120 +130,139 @@ public class TrickEngine {
 
         currentTurnIndex++;
 
-        if (currentTurnIndex >= players.size()) {
-            currentTurnIndex = 0;
-        }
+        currentTurnIndex %= players.size();
     }
 
     // =====================================================
-    // WINNER
+    // RESOLVE WINNER
     // =====================================================
 
     private void resolveWinner() {
 
         Player winner = null;
-        Card best = null;
+        Card bestCard = null;
 
-        int total = 0;
+        int totalPoints = 0;
 
-        Suit lead = trick.getLeadSuit();
+        Suit leadSuit = trick.getLeadSuit();
 
-        for (Map.Entry<Player, Card> e : trick.getPlayedCards().entrySet()) {
+        for (Map.Entry<Player, Card> entry
+                : trick.getPlayedCards().entrySet()) {
 
-            Card c = e.getValue();
+            Card current = entry.getValue();
 
-            total += CardPointCalculator.getPointValue(
-                    c.getRank(),
-                    c.getSuit()
-            );
+            totalPoints += CardPointCalculator.getPointValue(
+                    current.getRank(),
+                    current.getSuit());
 
-            if (best == null) {
-                best = c;
-                winner = e.getKey();
+            if (bestCard == null) {
+
+                bestCard = current;
+                winner = entry.getKey();
                 continue;
             }
 
-            boolean cTrump = c.getSuit() == trumpSuit;
-            boolean bTrump = best.getSuit() == trumpSuit;
+            boolean currentTrump =
+                    current.getSuit() == trick.getTrumpSuit();
 
-            if (cTrump && !bTrump) {
-                best = c;
-                winner = e.getKey();
+            boolean bestTrump =
+                    bestCard.getSuit() == trick.getTrumpSuit();
+
+            // Trump beats non-trump
+
+            if (currentTrump && !bestTrump) {
+
+                bestCard = current;
+                winner = entry.getKey();
                 continue;
             }
 
-            if (cTrump && bTrump) {
+            // Trump vs trump
 
-                if (rank(c) > rank(best)) {
-                    best = c;
-                    winner = e.getKey();
+            if (currentTrump && bestTrump) {
+
+                if (rank(current) > rank(bestCard)) {
+
+                    bestCard = current;
+                    winner = entry.getKey();
                 }
 
                 continue;
             }
 
-            if (!bTrump &&
-                    c.getSuit() == lead &&
-                    best.getSuit() != lead) {
+            // Lead suit beats off suit
 
-                best = c;
-                winner = e.getKey();
+            if (!bestTrump
+                    && current.getSuit() == leadSuit
+                    && bestCard.getSuit() != leadSuit) {
+
+                bestCard = current;
+                winner = entry.getKey();
                 continue;
             }
 
-            if (c.getSuit() == lead &&
-                    best.getSuit() == lead &&
-                    rank(c) > rank(best)) {
+            // Higher lead card
 
-                best = c;
-                winner = e.getKey();
+            if (current.getSuit() == leadSuit
+                    && bestCard.getSuit() == leadSuit
+                    && rank(current) > rank(bestCard)) {
+
+                bestCard = current;
+                winner = entry.getKey();
             }
         }
 
         trick.setWinner(winner);
-        trick.setPoints(total);
+        trick.setLeader(winner);
+        trick.setPoints(totalPoints);
         trick.setState(TrickState.COMPLETED);
-
-        // prepare next trick leader
 
         currentTurnIndex = players.indexOf(winner);
     }
 
     // =====================================================
-    // RANK
+    // CARD RANK
     // =====================================================
 
-    private int rank(Card c) {
+    private int rank(Card card) {
 
-        switch (c.getRank()) {
+        return switch (card.getRank()) {
 
-            case SEVEN:
-                return 1;
+            case SEVEN -> 1;
+            case EIGHT -> 2;
+            case NINE -> 3;
+            case TEN -> 4;
+            case JACK -> 5;
+            case QUEEN -> 6;
+            case KING -> 7;
+            case ACE -> 8;
 
-            case EIGHT:
-                return 2;
+            default -> 0;
+        };
+    }
 
-            case NINE:
-                return 3;
+    // =====================================================
+    // HELPER METHODS
+    // =====================================================
 
-            case TEN:
-                return 4;
+    public boolean isCompleted() {
 
-            case JACK:
-                return 5;
+        return trick.getState() == TrickState.COMPLETED;
+    }
 
-            case QUEEN:
-                return 6;
+    public int cardsPlayed() {
 
-            case KING:
-                return 7;
+        return trick.getPlayedCards().size();
+    }
 
-            case ACE:
-                return 8;
+    public int cardsRemaining() {
 
-            default:
-                return 0;
-        }
+        return players.size() - trick.getPlayedCards().size();
+    }
+
+    public boolean isPlayersTurn(Player player) {
+
+        return getCurrentPlayer().equals(player);
     }
 
     // =====================================================
@@ -238,7 +277,15 @@ public class TrickEngine {
         return players.get(currentTurnIndex);
     }
 
+    public Player getLeader() {
+        return trick.getLeader();
+    }
+
+    public Suit getLeadSuit() {
+        return trick.getLeadSuit();
+    }
+
     public Suit getTrumpSuit() {
-        return trumpSuit;
+        return trick.getTrumpSuit();
     }
 }

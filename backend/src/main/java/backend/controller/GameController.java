@@ -1,96 +1,71 @@
 package backend.controller;
 
-import backend.engine.RoomEngine;
-import backend.event.GameEvent;
-import backend.event.GameEventType;
-import backend.handler.AuctionHandler;
-import backend.handler.PartnerHandler;
-import backend.handler.PlayHandler;
-import backend.handler.TrumpHandler;
+import backend.dto.BidRequest;
+import backend.dto.PartnerRequest;
+import backend.dto.PassRequest;
+import backend.dto.PlayCardRequest;
+import backend.dto.RoomStateResponse;
+import backend.dto.TrumpRequest;
+import backend.service.RoomService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/rooms/{roomId}")
 public class GameController {
 
-    private final RoomEngine roomEngine;
+    private final RoomService roomService;
 
-    private final AuctionHandler auctionHandler;
-    private final PlayHandler playHandler;
-    private final TrumpHandler trumpHandler;
-    private final PartnerHandler partnerHandler;
-
-    public GameController(RoomEngine roomEngine) {
-
-        this.roomEngine = roomEngine;
-
-        auctionHandler = new AuctionHandler(roomEngine);
-        playHandler = new PlayHandler(roomEngine);
-        trumpHandler = new TrumpHandler(roomEngine);
-        partnerHandler = new PartnerHandler(roomEngine);
+    public GameController(RoomService roomService) {
+        this.roomService = roomService;
     }
 
-    public void receiveEvent(GameEvent event) {
-
-        validate(event);
-
-        switch (event.getType()) {
-
-            case START_GAME:
-
-                roomEngine.startGame();
-                break;
-
-            case BID:
-
-                auctionHandler.handle(event);
-                break;
-
-            case PASS:
-
-                roomEngine
-                        .getGameEngine()
-                        .getRoundEngine()
-                        .getAuctionEngine()
-                        .pass(event.getPlayer());
-
-                break;
-
-            case SELECT_TRUMP:
-
-                trumpHandler.handle(event);
-                break;
-
-            case SELECT_PARTNER:
-
-                partnerHandler.handle(event);
-                break;
-
-            case PLAY_CARD:
-
-                playHandler.handle(event);
-                break;
-
-            default:
-
-                System.out.println(
-                        "Unhandled event : "
-                                + event.getType()
-                );
-        }
+    @PostMapping("/auction/bid")
+    public ResponseEntity<RoomStateResponse> placeBid(
+            @PathVariable UUID roomId,
+            @RequestBody BidRequest request) {
+        return ResponseEntity.ok(roomService.placeBid(roomId, request));
     }
 
-    private void validate(GameEvent event) {
+    @PostMapping("/auction/pass")
+    public ResponseEntity<RoomStateResponse> pass(
+            @PathVariable UUID roomId,
+            @RequestBody PassRequest request) {
+        return ResponseEntity.ok(roomService.pass(roomId, request));
+    }
 
-        if (event == null) {
-            throw new IllegalArgumentException("Event is null");
-        }
+    @PostMapping("/auction/finalize")
+    public ResponseEntity<RoomStateResponse> finalizeAuction(
+            @PathVariable UUID roomId) {
+        return ResponseEntity.ok(roomService.finalizeAuction(roomId));
+    }
 
-        if (event.getType() == null) {
-            throw new IllegalArgumentException("Event type is null");
-        }
+    @PostMapping("/trump")
+    public ResponseEntity<RoomStateResponse> chooseTrump(
+            @PathVariable UUID roomId,
+            @RequestBody TrumpRequest request) {
+        return ResponseEntity.ok(roomService.chooseTrump(roomId, request));
+    }
 
-        if (event.getType() != GameEventType.START_GAME &&
-                event.getPlayer() == null) {
+    @PostMapping("/partner")
+    public ResponseEntity<RoomStateResponse> choosePartnerCards(
+            @PathVariable UUID roomId,
+            @RequestBody PartnerRequest request) {
+        return ResponseEntity.ok(roomService.choosePartnerCards(roomId, request));
+    }
 
-            throw new IllegalArgumentException("Player is null");
-        }
+    @PostMapping("/play/start")
+    public ResponseEntity<RoomStateResponse> startPlayPhase(
+            @PathVariable UUID roomId) {
+        return ResponseEntity.ok(roomService.startPlayPhase(roomId));
+    }
+
+    @PostMapping("/play")
+    public ResponseEntity<RoomStateResponse> playCard(
+            @PathVariable UUID roomId,
+            @RequestBody PlayCardRequest request) {
+        return ResponseEntity.ok(roomService.playCard(roomId, request));
     }
 }

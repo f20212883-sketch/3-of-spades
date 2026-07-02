@@ -13,15 +13,14 @@ public class AuctionHandler {
 
     public void handle(GameEvent event) {
 
-        Integer bid = (Integer) event.getData();
+    Integer bid = (Integer) event.getData();
 
-        roomEngine
-                .getGameEngine()
-                .getRoundEngine()
-                .getAuctionEngine()
-                .placeBid(
-                        event.getPlayer(),
-                        bid
-                );
-    }
+    roomEngine
+            .getGameEngine()
+            .getRoundEngine()
+            .placeBid(
+                    event.getPlayer(),
+                    bid
+            );
+}
 }

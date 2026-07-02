@@ -2,7 +2,6 @@ package backend.sim;
 
 import backend.engine.BotEngine;
 import backend.engine.RoundEngine;
-import backend.engine.TrickEngine;
 import backend.model.*;
 
 import java.util.ArrayList;
@@ -39,9 +38,9 @@ public class BotSimulation {
         roundEngine.startRound();
 
         System.out.println();
-        System.out.println("==========================");
-        System.out.println("BOT ROUND STARTED");
-        System.out.println("==========================");
+        System.out.println("===============================");
+        System.out.println("ROUND STARTED");
+        System.out.println("===============================");
 
         // ==========================================
         // AUCTION
@@ -49,57 +48,40 @@ public class BotSimulation {
 
         roundEngine.startAuction();
 
-        int currentBid = 40;
+        System.out.println();
+        System.out.println("Auction");
 
         for (Player player : players) {
 
-            int bid =
-                    botEngine.makeBid(
-                            player,
-                            roundEngine.getAuctionEngine()
-                    );
+            int bid = botEngine.makeBid(
+        player,
+        round.getAuction()
+);
 
-            if (bid == -1) {
+if (bid == -1) {
 
-                roundEngine
-                        .getAuctionEngine()
-                        .pass(player);
+    roundEngine.pass(player);
 
-                System.out.println(
-                        player.getName() + " passes"
-                );
-            } else {
+} else {
 
-                currentBid = bid;
+    roundEngine.placeBid(player, bid);
+}
+                }
 
-                roundEngine
-                        .getAuctionEngine()
-                        .placeBid(player, bid);
+                roundEngine.finalizeAuction();
 
-                System.out.println(
-                        player.getName()
-                                + " bids "
-                                + bid
-                );
-            }
-        }
-
-        roundEngine
-                .getAuctionEngine()
-                .finalizeAuction();
-
-        Player bidder =
-                round.getAuction()
-                        .getHighestBidder();
+                Player bidder =
+                round.getAuction().getHighestBidder();
 
         System.out.println();
+
         System.out.println(
-                "Auction Winner : "
+                "Winner : "
                         + bidder.getName()
         );
 
         System.out.println(
-                "Winning Bid : "
+                "Bid : "
                         + round.getAuction().getHighestBid()
         );
 
@@ -116,6 +98,7 @@ public class BotSimulation {
         );
 
         System.out.println();
+
         System.out.println(
                 "Trump : "
                         + trump
@@ -163,45 +146,76 @@ public class BotSimulation {
         roundEngine.startPlayPhase();
 
         System.out.println();
-        System.out.println("==========================");
+
+        System.out.println("===============================");
         System.out.println("PLAY");
-        System.out.println("==========================");
+        System.out.println("===============================");
 
-        while (round.getState() == RoundState.PLAYING) {
+        int completedTricks = 0;
 
-            TrickEngine trickEngine =
-                    roundEngine.getTrickEngine();
+        while (round.getState() != RoundState.COMPLETED) {
 
             Player current =
-                    trickEngine.getCurrentPlayer();
+                    roundEngine
+                            .getTrickEngine()
+                            .getCurrentPlayer();
 
-            Card chosen =
-                    botEngine.playCard(
-                            current,
-                            trickEngine
-                    );
+                        // Determine valid moves for current player
+                        List<Card> validMovesList = new ArrayList<>();
+                        Trick currentTrick = roundEngine.getTrickEngine().getTrick();
+
+                        if (currentTrick.getPlayedCards().isEmpty()) {
+                                validMovesList.addAll(current.getHand());
+                        } else {
+                                Suit lead = currentTrick.getLeadSuit();
+                                boolean hasLead = current.hasSuit(lead);
+
+                                for (Card c : current.getHand()) {
+                                        if (hasLead) {
+                                                if (c.getSuit() == lead) {
+                                                        validMovesList.add(c);
+                                                }
+                                        } else {
+                                                validMovesList.add(c);
+                                        }
+                                }
+                        }
+
+                        System.out.println("Valid moves for " + current.getName() + ": " + validMovesList);
+
+                        Card card =
+                                        botEngine.playCard(
+                                                        current,
+                                                        roundEngine.getTrickEngine()
+                                        );
+
+                        System.out.println("Chosen move: " + card);
 
             roundEngine.playCard(
                     current,
-                    chosen
+                    card
             );
 
             System.out.println(
                     current.getName()
-                            + " plays "
-                            + chosen
+                            + " -> "
+                            + card
             );
 
-            if (trickEngine.getTrick().getState()
-                    == TrickState.COMPLETED) {
+            if (round.getTricks().size() > completedTricks) {
+
+                completedTricks++;
 
                 Trick trick =
-                        trickEngine.getTrick();
+                        round.getTricks()
+                                .get(completedTricks - 1);
 
                 System.out.println();
 
                 System.out.println(
-                        "Winner : "
+                        "Trick "
+                                + completedTricks
+                                + " Winner : "
                                 + trick.getWinner().getName()
                 );
 
@@ -210,24 +224,21 @@ public class BotSimulation {
                                 + trick.getPoints()
                 );
 
-                System.out.println("------------------------");
+                System.out.println("---------------------------");
             }
         }
 
         // ==========================================
-        // SCORING
+        // RESULT
         // ==========================================
 
-        roundEngine.scoring();
-
-        RoundScore score =
-                round.getScore();
+        RoundScore score = round.getScore();
 
         System.out.println();
 
-        System.out.println("==========================");
-        System.out.println("RESULT");
-        System.out.println("==========================");
+        System.out.println("===============================");
+        System.out.println("ROUND RESULT");
+        System.out.println("===============================");
 
         System.out.println(
                 "Bid Value : "
@@ -235,18 +246,35 @@ public class BotSimulation {
         );
 
         System.out.println(
-                "Bidding Team : "
+                "Bid Success : "
+                        + score.isBidSuccess()
+        );
+
+        System.out.println(
+                "Bidding Team Score : "
                         + score.getBiddingTeamPoints()
         );
 
         System.out.println(
-                "Opponents : "
+                "Opponent Score : "
                         + score.getOpponentTeamPoints()
         );
 
-        System.out.println(
-                "Bid Success : "
-                        + score.isBidSuccess()
-        );
-    }
+        System.out.println();
+
+        System.out.println("===============================");
+        System.out.println("FINAL TEAM");
+        System.out.println("===============================");
+
+        for (Player p : round.getTeam().getMembers()) {
+
+            System.out.println(
+                    p.getName()
+            );
+        }
+
+        System.out.println();
+
+        System.out.println("Round Completed Successfully.");
+        }
 }

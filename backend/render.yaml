@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: three-of-spades-backend
+    env: java
+    plan: free
+    region: oregon
+    buildCommand: ./mvnw -DskipTests package
+    startCommand: java -jar target/backend-0.0.1-SNAPSHOT.jar
+    envVars:
+      - key: PORT
+        value: 10000

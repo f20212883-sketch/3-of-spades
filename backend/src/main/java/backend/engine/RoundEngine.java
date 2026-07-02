@@ -2,29 +2,36 @@ package backend.engine;
 
 import backend.model.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 public class RoundEngine {
 
-    // =========================
+    // =====================================
     // CORE STATE
-    // =========================
+    // =====================================
+
+    private static final Logger log = LoggerFactory.getLogger(RoundEngine.class);
 
     private final Round round;
+
     private final List<Player> players;
 
     private AuctionEngine auctionEngine;
+
     private TrickEngine trickEngine;
 
-    private Deck deck;
+    private final Deck deck;
 
-    // =========================
-    // INIT
-    // =========================
+    // =====================================
+    // CONSTRUCTOR
+    // =====================================
 
     public RoundEngine(Round round, List<Player> players) {
+
         this.round = round;
         this.players = players;
 
@@ -36,11 +43,9 @@ public class RoundEngine {
         round.setState(RoundState.INIT);
     }
 
-    
-
-    // =====================================================
-    // STEP 1: START ROUND
-    // =====================================================
+    // =====================================
+    // START ROUND
+    // =====================================
 
     public void startRound() {
 
@@ -52,222 +57,333 @@ public class RoundEngine {
 
         round.setState(RoundState.DEALT);
 
+        startAuction();
     }
 
-
-
-    public void choosePartnerCards(Card card1, Card card2) {
-
-    Player bidder = round.getAuction().getHighestBidder();
-
-    if (bidder.getHand().contains(card1) ||
-        bidder.getHand().contains(card2)) {
-        throw new IllegalArgumentException(
-                "Bidder cannot choose a card from their own hand");
-    }
-
-    round.setPartnerCard1(card1);
-    round.setPartnerCard2(card2);
-
-    Team team = new Team();
-    team.addMember(bidder);
-
-    for (Player p : players) {
-        if (p.equals(bidder)) {
-            continue;
-        }
-
-        if (p.getHand().contains(card1) ||
-            p.getHand().contains(card2)) {
-            team.addMember(p);
-        }
-    }
-
-    round.setTeam(team);
-    round.setState(RoundState.TEAM_SELECTED);
-}
+    // =====================================
+    // VALIDATION
+    // =====================================
 
     private void validatePlayers() {
+
         if (players.size() != 6) {
-            throw new IllegalStateException("Exactly 6 players required");
+            throw new IllegalStateException(
+                    "Exactly 6 players required");
         }
 
         if (deck.size() != 48) {
-            throw new IllegalStateException("Deck must contain 48 cards");
+            throw new IllegalStateException(
+                    "Deck must contain 48 cards");
         }
     }
 
-    // =====================================================
-    // STEP 2: DEAL CARDS
-    // =====================================================
+    // =====================================
+    // DEAL CARDS
+    // =====================================
 
     private void dealCards() {
 
         int cardsPerPlayer = 8;
 
         for (Player player : players) {
+
+            player.clearHand();
+
             for (int i = 0; i < cardsPerPlayer; i++) {
+
                 player.receiveCard(deck.draw());
             }
         }
     }
 
-    // =====================================================
-    // STEP 3: AUCTION
-    // =====================================================
+    // =====================================
+    // START AUCTION
+    // =====================================
 
     public void startAuction() {
 
         Auction auction = new Auction();
+
         round.setAuction(auction);
 
-        auctionEngine = new AuctionEngine(auction, players);
+        auctionEngine =
+                new AuctionEngine(
+                        auction,
+                        players
+                );
+
+        auctionEngine.setRound(round);
+
         auctionEngine.startAuction();
-
-        // AuctionResult result = auctionEngine.getResult();
-
-        round.setState(RoundState.AUCTION_DONE);
+        // Auction is started; state remains DEALT until auction is finalized
     }
 
-    // =====================================================
-    // STEP 4: TRUMP
-    // =====================================================
+    // =====================================
+    // SELECT TRUMP
+    // =====================================
 
-    public void setTrump(Player player, Suit trump) {
+    public void setTrump(
+            Player player,
+            Suit trump
+    ) {
 
-    if (round.getState() != RoundState.AUCTION_DONE) {
-        throw new IllegalStateException("Trump only after auction");
+        if (round.getState()
+                != RoundState.AUCTION_DONE) {
+
+            throw new IllegalStateException(
+                    "Trump can only be selected after auction");
+        }
+
+        Player winner =
+                round.getAuction()
+                        .getHighestBidder();
+
+        if (winner == null) {
+
+            throw new IllegalStateException(
+                    "Auction winner not decided");
+        }
+
+        if (!winner.equals(player)) {
+
+            throw new IllegalStateException(
+                    "Only auction winner can select trump");
+        }
+
+        round.setTrumpSuit(trump);
+
+        round.getAuction()
+                .setTrumpSuit(trump);
+
+        round.setState(
+                RoundState.TRUMP_SELECTED
+        );
+        
+        String message = player.getName() + " selected trump suit: " + trump;
+        round.addEvent(new GameEvent("TRUMP_SELECTED", message, player.getName()));
     }
 
-    Player winner = round.getAuction().getHighestBidder();
+    // =====================================
+    // CHOOSE PARTNER CARDS
+    // =====================================
 
-    if (winner == null) {
-        throw new IllegalStateException("Auction winner not decided");
-    }
+    public void choosePartnerCards(
+            Card card1,
+            Card card2
+    ) {
 
-    if (!winner.equals(player)) {
-        throw new IllegalStateException("Only auction winner can select trump");
-    }
+        if (card1.equals(card2)) {
 
-    round.setTrumpSuit(trump);
-    round.getAuction().setTrumpSuit(trump);
+            throw new IllegalArgumentException(
+                    "Partner cards must be different");
+        }
 
-    round.setState(RoundState.TRUMP_SELECTED);
-}
+        Player bidder =
+                round.getAuction()
+                        .getHighestBidder();
 
-    // =====================================================
-    // STEP 5: TEAM
-    // =====================================================
+        if (bidder == null) {
 
-    public void setTeam(Team team) {
+            throw new IllegalStateException(
+                    "Auction winner not found");
+        }
 
-        if (round.getState() != RoundState.TRUMP_SELECTED) {
-            throw new IllegalStateException("Team only after trump");
+        if (bidder.getHand().contains(card1)
+                || bidder.getHand().contains(card2)) {
+
+            throw new IllegalArgumentException(
+                    "Bidder cannot select own cards");
+        }
+
+        round.setPartnerCard1(card1);
+        round.setPartnerCard2(card2);
+
+        Team team = new Team();
+
+        team.addMember(bidder);
+
+        for (Player p : players) {
+
+            if (p.equals(bidder)) {
+                continue;
+            }
+
+            if (p.getHand().contains(card1)
+                    || p.getHand().contains(card2)) {
+
+                team.addMember(p);
+            }
         }
 
         round.setTeam(team);
 
-        round.setState(RoundState.TEAM_SELECTED);
+        log.info("Bid winner {} has chosen partner cards {} and {}", bidder.getName(), card1, card2);
+        
+        String message = bidder.getName() + " has chosen partner cards " + card1 + " and " + card2;
+        round.addEvent(new GameEvent("PARTNER_CARDS_CHOSEN", message, bidder.getName()));
 
+        round.setState(
+                RoundState.TEAM_SELECTED
+        );
     }
 
-    // =====================================================
-    // STEP 6: PLAY PHASE
-    // =====================================================
+    // =====================================
+    // SET TEAM (OPTIONAL)
+    // =====================================
 
-    public void startPlayPhase() {
+    public void setTeam(Team team) {
 
-    Player firstPlayer = round.getAuction().getHighestBidder();
+        if (round.getState()
+                != RoundState.TRUMP_SELECTED) {
 
-    if (firstPlayer == null) {
-        throw new IllegalStateException("Auction winner missing");
+            throw new IllegalStateException(
+                    "Team selection allowed only after trump");
+        }
+
+        round.setTeam(team);
+
+        round.setState(
+                RoundState.TEAM_SELECTED
+        );
     }
-
-    Trick trick = new Trick();
-    trick.setTrumpSuit(round.getTrumpSuit());
-
-    trickEngine = new TrickEngine(trick, players, round.getTrumpSuit());
-    trickEngine.startTrick(firstPlayer);
-
-    round.setState(RoundState.PLAYING);
-}
-
-    // =====================================================
-    // STEP 7: PLAY CARD
-    // =====================================================
 
     public void playCard(Player player, Card card) {
 
-        if (round.getState() != RoundState.PLAYING) {
-            throw new IllegalStateException("Not in PLAYING state");
-        }
-
-        trickEngine.playCard(player, card);
-
-        if (trickEngine.getTrick().getState() == TrickState.COMPLETED) {
-            handleTrickCompletion();
-        }
+    if (round.getState() != RoundState.PLAYING) {
+        throw new IllegalStateException("Round is not in PLAYING state");
     }
 
-    // =====================================================
-    // STEP 8: TRICK COMPLETION
-    // =====================================================
+    trickEngine.playCard(player, card);
+
+    // Check if played card is a partner card and reveal teammate
+    checkPartnerCardReveal(player, card);
+
+    // If trick completed, create next trick automatically
+    if (trickEngine.getTrick().getState() == TrickState.COMPLETED) {
+        handleTrickCompletion();
+    }
+}
+
+    // =====================================
+    // CHECK PARTNER CARD REVEAL
+    // =====================================
+
+    private void checkPartnerCardReveal(Player player, Card card) {
+        
+        Card partnerCard1 = round.getPartnerCard1();
+        Card partnerCard2 = round.getPartnerCard2();
+        
+        // Check if the played card is a partner card
+        if ((partnerCard1 != null && partnerCard1.equals(card)) ||
+            (partnerCard2 != null && partnerCard2.equals(card))) {
+            
+            Player auctionWinner = round.getAuction().getHighestBidder();
+            
+            // Don't log if it's the auction winner themselves (they don't have partner cards)
+            if (auctionWinner != null && !auctionWinner.equals(player)) {
+                String message = player.getName() + " is a teammate of " + auctionWinner.getName() + 
+                    " (played partner card " + card + ")";
+                log.info("TEAMMATE REVEALED: {}", message);
+                round.addEvent(new GameEvent("TEAMMATE_REVEALED", message, player.getName()));
+            }
+        }
+    }
 
     private void handleTrickCompletion() {
 
     Trick completed = trickEngine.getTrick();
 
-    round.getTricks().add(completed);
+    // Store completed trick
+    round.addTrick(completed);
 
-    round.setCurrentTrickNumber(round.getCurrentTrickNumber() + 1);
+    if (round != null && completed.getWinner() != null) {
+        String message = completed.getWinner().getName()
+                + " won the trick with "
+                + completed.getPoints()
+                + " points";
+        log.info("TRICK_COMPLETED: {}", message);
+        round.addEvent(new GameEvent("TRICK_COMPLETED", message, completed.getWinner().getName()));
+    }
+
+    // Increment trick count
+    round.nextTrick();
 
     Player nextLeader = completed.getWinner();
 
     if (nextLeader == null) {
-        throw new IllegalStateException("Trick winner is null");
+        throw new IllegalStateException("Trick winner cannot be null");
     }
 
-    // GAME END CONDITION
+    // ==========================
+    // ROUND COMPLETE
+    // ==========================
+
     if (round.getCurrentTrickNumber() >= 8) {
+
+        // Calculate round score automatically
+        scoring();
+
+        // Mark round complete
         round.setState(RoundState.COMPLETED);
+
         return;
     }
 
-    // CREATE NEXT TRICK
+    // ==========================
+    // START NEXT TRICK
+    // ==========================
+
     Trick nextTrick = new Trick();
+
     nextTrick.setTrumpSuit(round.getTrumpSuit());
 
-    trickEngine = new TrickEngine(nextTrick, players, round.getTrumpSuit());
+    trickEngine = new TrickEngine(
+            nextTrick,
+            players,
+            round.getTrumpSuit()
+    );
+
+    trickEngine.setRound(round);
+    round.setTrickEngine(trickEngine);
+
     trickEngine.startTrick(nextLeader);
 }
 
-    // =====================================================
-// STEP 9: SCORING
-// =====================================================
+public void pass(Player player) {
+    auctionEngine.pass(player);
+}
+
+public boolean isRoundCompleted() {
+    return round.getState() == RoundState.COMPLETED;
+}
+
+public void placeBid(Player player, int bid) {
+
+    if (auctionEngine == null) {
+        throw new IllegalStateException("Auction has not started");
+    }
+
+    auctionEngine.placeBid(player, bid);
+}
 
 public void scoring() {
-
-    if (round.getState() != RoundState.COMPLETED) {
-        throw new IllegalStateException("Round not completed");
-    }
-
-    if (round.getTricks().size() != 8) {
-        throw new IllegalStateException("All 8 tricks must be completed");
-    }
 
     int biddingPoints = 0;
     int opponentPoints = 0;
 
-    int bidValue = round.getAuction().getHighestBid();
+    Team biddingTeam = round.getTeam();
 
-    Set<Player> biddingTeam = round.getTeam().getMembers();
+    int bidValue =
+            round.getAuction().getHighestBid();
 
-    // Count trick points
     for (Trick trick : round.getTricks()) {
 
-        if (biddingTeam.contains(trick.getWinner())) {
+        if (biddingTeam.getMembers().contains(trick.getWinner())) {
+
             biddingPoints += trick.getPoints();
+
         } else {
+
             opponentPoints += trick.getPoints();
         }
     }
@@ -281,35 +397,64 @@ public void scoring() {
 
     if (success) {
 
-        // Bid successful
         score.setBiddingTeamPoints(bidValue);
         score.setOpponentTeamPoints(0);
 
     } else {
 
-        // Bid failed
         score.setBiddingTeamPoints(0);
         score.setOpponentTeamPoints(opponentPoints);
     }
 
     round.setScore(score);
-
-    round.setState(RoundState.COMPLETED);
 }
 
-    // =====================================================
-    // GETTERS
-    // =====================================================
+public void finalizeAuction() {
 
-    public Round getRound() {
-        return round;
+    auctionEngine.finalizeAuction();
+    
+    round.setState(RoundState.AUCTION_DONE);
+}
+
+public void startPlayPhase() {
+
+    if (round.getAuction() == null) {
+        throw new IllegalStateException("Auction not initialized");
     }
 
-    public AuctionEngine getAuctionEngine() {
-        return auctionEngine;
+    if (round.getAuction().getHighestBidder() == null) {
+        throw new IllegalStateException("Auction winner not decided");
     }
 
-    public TrickEngine getTrickEngine() {
-        return trickEngine;
+    if (round.getTrumpSuit() == null) {
+        throw new IllegalStateException("Trump suit not selected");
     }
+
+    if (round.getTeam() == null) {
+        throw new IllegalStateException("Team not selected");
+    }
+
+    Player leader = round.getAuction().getHighestBidder();
+
+    Trick trick = new Trick();
+    trick.setTrumpSuit(round.getTrumpSuit());
+
+    trickEngine = new TrickEngine(
+            trick,
+            players,
+            round.getTrumpSuit()
+    );
+
+    trickEngine.setRound(round);
+    round.setTrickEngine(trickEngine);
+
+    trickEngine.startTrick(leader);
+
+    round.setState(RoundState.PLAYING);
+}
+
+public TrickEngine getTrickEngine() {
+    return trickEngine;
+}
+
 }

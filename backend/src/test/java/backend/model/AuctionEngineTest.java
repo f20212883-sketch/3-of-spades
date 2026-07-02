@@ -35,11 +35,11 @@ public class AuctionEngineTest {
         AuctionEngine engine = new AuctionEngine(auction, players);
         engine.startAuction();
 
-        engine.placeBid(players.get(0), 50);
-        engine.placeBid(players.get(1), 60);
-        engine.placeBid(players.get(2), 70);
+        engine.placeBid(players.get(0), 150);
+        engine.placeBid(players.get(1), 160);
+        engine.placeBid(players.get(2), 170);
 
-        assertEquals(70, auction.getHighestBid());
+        assertEquals(170, auction.getHighestBid());
         assertEquals(players.get(2), auction.getHighestBidder());
     }
 
@@ -55,10 +55,10 @@ public class AuctionEngineTest {
         AuctionEngine engine = new AuctionEngine(auction, players);
         engine.startAuction();
 
-        engine.placeBid(players.get(0), 80);
+        engine.placeBid(players.get(0), 180);
 
         assertThrows(IllegalStateException.class,
-                () -> engine.placeBid(players.get(1), 70));
+                () -> engine.placeBid(players.get(1), 170));
     }
 
     // =====================================================
@@ -73,12 +73,12 @@ public class AuctionEngineTest {
         AuctionEngine engine = new AuctionEngine(auction, players);
         engine.startAuction();
 
-        engine.placeBid(players.get(0), 60);
+        engine.placeBid(players.get(0), 160);
 
         engine.pass(players.get(1));
 
         assertThrows(IllegalStateException.class,
-                () -> engine.placeBid(players.get(1), 80));
+                () -> engine.placeBid(players.get(1), 180));
     }
 
     // =====================================================
@@ -95,11 +95,24 @@ public class AuctionEngineTest {
 
         assertEquals(players.get(0), auction.getCurrentTurn());
 
-        engine.placeBid(players.get(0), 50);
+        engine.placeBid(players.get(0), 150);
         assertEquals(players.get(1), auction.getCurrentTurn());
 
-        engine.placeBid(players.get(1), 60);
+        engine.placeBid(players.get(1), 160);
         assertEquals(players.get(2), auction.getCurrentTurn());
+    }
+
+    @Test
+    void testNonActivePlayerCannotBid() {
+
+        Auction auction = createAuction();
+        List<Player> players = createPlayers();
+
+        AuctionEngine engine = new AuctionEngine(auction, players);
+        engine.startAuction();
+
+        assertThrows(IllegalStateException.class,
+                () -> engine.placeBid(players.get(1), 160));
     }
 
     // =====================================================
@@ -117,11 +130,13 @@ public class AuctionEngineTest {
         engine.pass(players.get(0));
         engine.pass(players.get(1));
 
-        engine.placeBid(players.get(2), 60);
+        engine.placeBid(players.get(2), 160);
 
         engine.pass(players.get(3));
         engine.pass(players.get(4));
         engine.pass(players.get(5));
+
+        engine.placeBid(players.get(2), 180);
 
         engine.finalizeAuction();
 

@@ -14,6 +14,22 @@ public class TrumpHandler {
 
     public void handle(GameEvent event) {
 
+        if (event == null) {
+            throw new IllegalArgumentException("Event cannot be null");
+        }
+
+        if (event.getPlayer() == null) {
+            throw new IllegalArgumentException("Player cannot be null");
+        }
+
+        if (event.getData() == null) {
+            throw new IllegalArgumentException("Trump suit cannot be null");
+        }
+
+        if (!(event.getData() instanceof Suit)) {
+            throw new IllegalArgumentException("Data must be a Suit");
+        }
+
         Suit suit = (Suit) event.getData();
 
         roomEngine

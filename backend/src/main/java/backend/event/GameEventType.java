@@ -2,6 +2,12 @@ package backend.event;
 
 public enum GameEventType {
 
+    // ==========================
+    // ROOM EVENTS
+    // ==========================
+
+    CREATE_ROOM,
+
     JOIN_ROOM,
 
     LEAVE_ROOM,
@@ -10,9 +16,17 @@ public enum GameEventType {
 
     START_GAME,
 
+    // ==========================
+    // AUCTION EVENTS
+    // ==========================
+
     BID,
 
     PASS,
+
+    // ==========================
+    // ROUND EVENTS
+    // ==========================
 
     SELECT_TRUMP,
 
@@ -20,7 +34,19 @@ public enum GameEventType {
 
     PLAY_CARD,
 
+    // ==========================
+    // ENGINE EVENTS
+    // ==========================
+
+    TRICK_FINISHED,
+
     ROUND_FINISHED,
 
-    GAME_FINISHED
+    GAME_FINISHED,
+
+    // ==========================
+    // ROOM EVENTS
+    // ==========================
+
+    REMATCH
 }

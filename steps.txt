@@ -1,0 +1,9 @@
+1) Log to check bid winner has chosen which cards.
+2) In future, is the player revealed when the player plays the chosen cards.
+3) when player plays card, check if it is in its hand.
+4) bid winner cant chose cards in his own hand.
+5) Simulate one full trick via postman.
+
+6) How do bots start to play ?
+if < 6 players, join then bot joins ?
+if player disconnects, then bot plays until rejoin ?

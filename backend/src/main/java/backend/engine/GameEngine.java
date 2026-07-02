@@ -2,10 +2,15 @@ package backend.engine;
 
 import backend.model.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class GameEngine {
+
+    private static final Logger log = LoggerFactory.getLogger(GameEngine.class);
 
     private final Game game;
 
@@ -27,7 +32,9 @@ public class GameEngine {
         }
     }
 
-    // =================================
+    // =====================================================
+    // START GAME
+    // =====================================================
 
     public void startGame() {
 
@@ -35,14 +42,16 @@ public class GameEngine {
 
         game.setCurrentRoundNumber(1);
 
-        game.setDealer(players.get(0));
-
         dealerIndex = 0;
+
+        game.setDealer(players.get(dealerIndex));
 
         startNextRound();
     }
 
-    // =================================
+    // =====================================================
+    // START NEXT ROUND
+    // =====================================================
 
     public void startNextRound() {
 
@@ -54,39 +63,43 @@ public class GameEngine {
 
         game.setCurrentRound(round);
 
-        roundEngine =
-                new RoundEngine(round, players);
+        roundEngine = new RoundEngine(round, players);
 
+        // shuffle + deal cards
         roundEngine.startRound();
     }
 
-    // =================================
+    // =====================================================
+    // FINISH ROUND
+    // =====================================================
 
     public void finishRound() {
 
-        roundEngine.scoring();
+    updateScores();
 
-        updateScores();
+    rotateDealer();
 
-        rotateDealer();
+    game.setCurrentRoundNumber(
+            game.getCurrentRoundNumber() + 1
+    );
 
-        game.setCurrentRoundNumber(
-                game.getCurrentRoundNumber() + 1
-        );
+    if (checkGameEnd()) {
 
-        if (checkGameEnd()) {
+        game.setState(GameState.GAME_OVER);
+        
+        logTop3Players();
 
-            game.setState(GameState.GAME_OVER);
+    } else {
 
-        } else {
+        game.setState(GameState.ROUND_OVER);
 
-            game.setState(GameState.ROUND_OVER);
-
-            startNextRound();
-        }
+        startNextRound();
     }
+}
 
-    // =================================
+    // =====================================================
+    // UPDATE CUMULATIVE SCORES
+    // =====================================================
 
     private void updateScores() {
 
@@ -95,6 +108,11 @@ public class GameEngine {
         RoundScore score = round.getScore();
 
         Team biddingTeam = round.getTeam();
+
+        if (biddingTeam == null) {
+            throw new IllegalStateException(
+                    "Bidding team not initialized");
+        }
 
         for (Player p : biddingTeam.getMembers()) {
 
@@ -122,7 +140,9 @@ public class GameEngine {
         }
     }
 
-    // =================================
+    // =====================================================
+    // ROTATE DEALER
+    // =====================================================
 
     private void rotateDealer() {
 
@@ -135,14 +155,18 @@ public class GameEngine {
         );
     }
 
-    // =================================
+    // =====================================================
+    // CHECK GAME END
+    // =====================================================
 
     private boolean checkGameEnd() {
 
         return game.getCurrentRoundNumber() > 6;
     }
 
-    // =================================
+    // =====================================================
+    // GET WINNER
+    // =====================================================
 
     public Player getWinner() {
 
@@ -164,16 +188,59 @@ public class GameEngine {
         return winner;
     }
 
-    // =================================
+    // =====================================================
+    // GET TOP 3 PLAYERS
+    // =====================================================
+
+    public java.util.List<Map.Entry<Player, Integer>> getTop3Players() {
+
+        return game.getCumulativeScore().entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .limit(3)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    // =====================================================
+    // LOG TOP 3 PLAYERS AT GAME END
+    // =====================================================
+
+    private void logTop3Players() {
+
+        List<Map.Entry<Player, Integer>> top3 = getTop3Players();
+
+        log.info("\n========== GAME COMPLETE ==========");
+        log.info("Top 3 Players:");
+
+        int rank = 1;
+        for (Map.Entry<Player, Integer> entry : top3) {
+            log.info("  #{}. {} - {} points", rank, entry.getKey().getName(), entry.getValue());
+            rank++;
+        }
+
+        log.info("==================================\n");
+    }
+
+    // =====================================================
+    // RESTART GAME
+    // =====================================================
 
     public void restartGame() {
 
         game.getRounds().clear();
 
+        game.setCurrentRound(null);
+
+        game.setCurrentRoundNumber(0);
+
+        game.setDealer(null);
+
         game.getCumulativeScore().clear();
 
         for (Player p : players) {
+
             game.getCumulativeScore().put(p, 0);
+
+            p.resetForNewRound();
         }
 
         dealerIndex = 0;
@@ -181,7 +248,9 @@ public class GameEngine {
         startGame();
     }
 
-    // =================================
+    // =====================================================
+    // GETTERS
+    // =====================================================
 
     public RoundEngine getRoundEngine() {
         return roundEngine;
@@ -189,5 +258,13 @@ public class GameEngine {
 
     public Game getGame() {
         return game;
+    }
+
+    public List<Player> getPlayers() {
+        return players;
+    }
+
+    public Round getCurrentRound() {
+        return game.getCurrentRound();
     }
 }

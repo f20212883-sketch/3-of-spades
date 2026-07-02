@@ -1,0 +1,40 @@
+.card {
+  width: 70px;
+  height: 100px;
+  background: white;
+  border-radius: 10px;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.corner {
+  position: absolute;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: bold;
+}
+
+.top-left {
+  top: 6px;
+  left: 6px;
+}
+
+.bottom-right {
+  bottom: 6px;
+  right: 6px;
+  transform: rotate(180deg);
+}
+
+.center-suit {
+  font-size: 30px;
+  font-weight: bold;
+}

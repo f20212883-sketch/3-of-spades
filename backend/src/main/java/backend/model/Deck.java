@@ -18,7 +18,9 @@ public class Deck {
         cards.clear();
 
         for (Suit suit : Suit.values()) {
+
             for (Rank rank : Rank.values()) {
+
                 cards.add(new Card(suit, rank));
             }
         }
@@ -33,14 +35,22 @@ public class Deck {
     }
 
     public Card draw() {
+
         if (cards.isEmpty()) {
             throw new IllegalStateException("Deck is empty");
         }
+
         return cards.remove(cards.size() - 1);
     }
 
+    public void reset() {
+
+        cards.clear();
+        createDeck();
+    }
+
     // =========================
-    // COMPATIBILITY METHODS (IMPORTANT)
+    // GETTERS
     // =========================
 
     public int size() {
@@ -48,7 +58,7 @@ public class Deck {
     }
 
     public int remainingCards() {
-        return cards.size(); // FIX for your tests
+        return cards.size();
     }
 
     public boolean isEmpty() {
@@ -57,5 +67,10 @@ public class Deck {
 
     public List<Card> getCards() {
         return Collections.unmodifiableList(cards);
+    }
+
+    @Override
+    public String toString() {
+        return "Deck{remainingCards=" + cards.size() + "}";
     }
 }

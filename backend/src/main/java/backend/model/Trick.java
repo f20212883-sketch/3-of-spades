@@ -1,13 +1,15 @@
 package backend.model;
 
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class Trick {
 
     private Player leader;
 
-    private Map<Player, Card> playedCards = new HashMap<>();
+    // preserves play order
+    private final Map<Player, Card> playedCards = new LinkedHashMap<>();
 
     private Suit leadSuit;
 
@@ -28,7 +30,7 @@ public class Trick {
     }
 
     public Map<Player, Card> getPlayedCards() {
-        return playedCards;
+        return Collections.unmodifiableMap(playedCards);
     }
 
     public Suit getLeadSuit() {
@@ -52,7 +54,7 @@ public class Trick {
     }
 
     // =========================
-    // SETTERS (STATE ONLY)
+    // SETTERS
     // =========================
 
     public void setLeader(Player leader) {
@@ -77,5 +79,30 @@ public class Trick {
 
     public void setState(TrickState state) {
         this.state = state;
+    }
+
+    // =========================
+    // HELPER METHODS
+    // =========================
+
+    public void addPlayedCard(Player player, Card card) {
+        playedCards.put(player, card);
+    }
+
+    public int getCardsPlayedCount() {
+        return playedCards.size();
+    }
+
+    public boolean isComplete() {
+        return playedCards.size() == 6;
+    }
+
+    public void clear() {
+        playedCards.clear();
+        leader = null;
+        leadSuit = null;
+        winner = null;
+        points = 0;
+        state = TrickState.OPEN;
     }
 }
