@@ -1,11 +1,11 @@
-# Build stage
-FROM eclipse-temurin:21-jdk AS builder
+# Builder stage
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
 COPY . .
 
-RUN mvn -DskipTests clean package
+RUN mvn clean package -DskipTests
 
 # Runtime stage
 FROM eclipse-temurin:21-jre
@@ -14,6 +14,6 @@ WORKDIR /app
 
 COPY --from=builder /app/target/*.jar app.jar
 
-EXPOSE 10000
+EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]
