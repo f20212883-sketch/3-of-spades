@@ -12,7 +12,6 @@ services:
       - key: VITE_WS_URL
         value: wss://three-of-spades-backend.onrender.com/ws
 
-services:
   - type: web
     name: three-of-spades-backend
     env: java
