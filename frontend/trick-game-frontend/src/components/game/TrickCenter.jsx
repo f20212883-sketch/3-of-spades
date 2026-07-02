@@ -9,30 +9,14 @@ const TrickCenter = forwardRef(({ trick = [] }, ref) => {
       {count === 0 ? (
         <div style={{ opacity: 0.5 }}>Waiting for plays...</div>
       ) : (
-        trick.map((t, i) => {
-          const total = Math.max(count, 1);
-          const span = total <= 2 ? 0 : total <= 4 ? 120 : 160;
-          const startAngle = total <= 1 ? 0 : -span / 2;
-          const angle = total <= 1 ? 0 : startAngle + (i * span) / (total - 1);
-          const rad = (angle * Math.PI) / 180;
-          const radius = total <= 2 ? 120 : total <= 4 ? 170 : 200;
-          const x = radius * Math.sin(rad);
-          const y = -radius * Math.cos(rad) + (total > 4 ? 10 : 0);
-          const rotation = total <= 2 ? 0 : i % 2 === 0 ? -8 : 8;
-
-          return (
-            <div
-              key={i}
-              style={{
-                ...styles.cardWrapper,
-                transform: `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${rotation}deg)`
-              }}
-            >
+        <div style={styles.row}>
+          {trick.map((t, i) => (
+            <div key={i} style={styles.cardWrapper}>
               <div style={styles.cardLabel}>{t.playerName || "Player"}</div>
               <Card card={t.card} size="small" />
             </div>
-          );
-        })
+          ))}
+        </div>
       )}
     </div>
   );
@@ -59,10 +43,16 @@ const styles = {
     zIndex: 10
   },
 
+  row: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+    width: "100%"
+  },
+
   cardWrapper: {
-    position: "absolute",
-    left: "50%",
-    top: "50%",
     width: "126px",
     display: "flex",
     flexDirection: "column",

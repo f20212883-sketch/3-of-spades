@@ -33,10 +33,13 @@ function sortCards(cards, mode) {
   });
 }
 
-export default function Hand({ cards = [], onPlayCard, locked }) {
+export default function Hand({ cards = [], onPlayCard, locked, currentTrick = [] }) {
   const [sortMode, setSortMode] = useState("suit");
+  const [hoveredCardIndex, setHoveredCardIndex] = useState(null);
 
   const sortedCards = useMemo(() => sortCards(cards, sortMode), [cards, sortMode]);
+  const leadSuit = currentTrick?.[0]?.card?.suit ?? null;
+  const hasLeadSuit = cards.some((card) => card?.suit === leadSuit);
 
   return (
     <div style={styles.wrapper}>
@@ -60,19 +63,26 @@ export default function Hand({ cards = [], onPlayCard, locked }) {
       <div style={styles.hand}>
         {sortedCards.map((card, index) => {
           const offset = index - (sortedCards.length - 1) / 2;
+          const baseTransform = `translateX(${offset * 14}px) rotate(${offset * 4}deg)`;
+          const isPlayable = !locked && (!leadSuit || !hasLeadSuit || card?.suit === leadSuit);
+          const isHovered = isPlayable && hoveredCardIndex === index;
+          const transform = isPlayable
+            ? `${baseTransform} translateY(${isHovered ? -12 : -6}px)`
+            : baseTransform;
 
           return (
             <div
               key={card.id || index}
               style={{
                 ...styles.cardWrapper,
-                transform: `
-                  translateX(${offset * 14}px)
-                  rotate(${offset * 4}deg)
-                `,
+                transform,
                 transformOrigin: "bottom center",
-                zIndex: index
+                zIndex: index,
+                boxShadow: isPlayable ? "0 0 0 3px #facc15, 0 10px 18px rgba(250, 204, 21, 0.25)" : "none",
+                borderRadius: "16px"
               }}
+              onMouseEnter={() => isPlayable && setHoveredCardIndex(index)}
+              onMouseLeave={() => isPlayable && setHoveredCardIndex(null)}
               onClick={(event) => {
                 console.debug("Hand card clicked", { card, locked });
                 if (locked) return;

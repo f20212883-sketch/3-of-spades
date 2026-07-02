@@ -265,6 +265,7 @@ public class RoomService {
         Map<UUID, List<CardDto>> playerHands = new HashMap<>();
         UUID currentTurnPlayerId = null;
         TrickSnapshotDto latestTrick = null;
+        TrickSnapshotDto lastCompletedTrick = null;
         List<GameEventDto> gameEvents = new ArrayList<>();
 
         for (Player player : room.getPlayers()) {
@@ -325,6 +326,24 @@ public class RoomService {
                         playedCards
                     );
                 }
+
+                if (round.getTricks() != null && !round.getTricks().isEmpty()) {
+                    Trick lastTrick = round.getTricks().get(round.getTricks().size() - 1);
+                    List<PlayedCardDto> completedPlayedCards = lastTrick.getPlayedCards().entrySet().stream()
+                        .map(entry -> new PlayedCardDto(
+                            entry.getKey().getId(),
+                            entry.getKey().getName(),
+                            CardDto.fromCard(entry.getValue())
+                        ))
+                        .collect(Collectors.toList());
+
+                    lastCompletedTrick = new TrickSnapshotDto(
+                        lastTrick.getWinner() == null ? null : lastTrick.getWinner().getId(),
+                        lastTrick.getWinner() == null ? null : lastTrick.getWinner().getName(),
+                        lastTrick.getPoints(),
+                        completedPlayedCards
+                    );
+                }
         }
 
         // Populate player scores from currentGame
@@ -382,6 +401,7 @@ public class RoomService {
                 playerHands,
                 currentTurnPlayerId,
                 latestTrick,
+                lastCompletedTrick,
                 gameEvents
         );
     }

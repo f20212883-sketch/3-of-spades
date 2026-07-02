@@ -112,6 +112,7 @@ Thread.sleep(BOT_LOOP_DELAY_MS);
                                         room.getPlayers().stream().collect(java.util.stream.Collectors.toMap(p -> p.getId(), p -> p.getHand().stream().map(backend.dto.CardDto::fromCard).toList())),
                                         null,
                                         null,
+                                        null,
                                         new java.util.ArrayList<>()));
                             } catch (Exception e) {
                                 log.warn("Bot bid failed for {}: {}", current.getName(), e.getMessage());
@@ -142,8 +143,7 @@ Thread.sleep(BOT_LOOP_DELAY_MS);
                                         new java.util.ArrayList<>(),
                                         room.getPlayers().stream().collect(java.util.stream.Collectors.toMap(p -> p.getId(), p -> p.getHand().stream().map(backend.dto.CardDto::fromCard).toList())),
                                         null,
-                                        null,
-                                        new java.util.ArrayList<>()));
+                                        null,                                        null,                                        new java.util.ArrayList<>()));
                             } catch (Exception e) {
                                 log.warn("Bot choose trump failed for {}: {}", winner.getName(), e.getMessage());
                             }
@@ -175,6 +175,7 @@ Thread.sleep(BOT_LOOP_DELAY_MS);
                                             room.getPlayers().stream().collect(java.util.stream.Collectors.toMap(p -> p.getId(), p -> p.getHand().stream().map(backend.dto.CardDto::fromCard).toList())),
                                             null,
                                             null,
+                                            null,
                                             new java.util.ArrayList<>()));
                                 }
                             } catch (Exception e) {
@@ -203,6 +204,7 @@ Thread.sleep(BOT_LOOP_DELAY_MS);
                                     new java.util.ArrayList<>(),
                                     new java.util.ArrayList<>(),
                                     room.getPlayers().stream().collect(java.util.stream.Collectors.toMap(p -> p.getId(), p -> p.getHand().stream().map(backend.dto.CardDto::fromCard).toList())),
+                                    null,
                                     null,
                                     null,
                                     new java.util.ArrayList<>()));

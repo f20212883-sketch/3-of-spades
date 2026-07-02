@@ -21,6 +21,7 @@ export const useGameStore = create((set, get) => ({
   winningTeam: [],
   top3Players: [],
   latestTrick: null,
+  lastCompletedTrick: null,
   trick: [],
   scores: {},
 
@@ -99,6 +100,7 @@ export const useGameStore = create((set, get) => ({
     winningTeam: [],
     top3Players: [],
     latestTrick: null,
+    lastCompletedTrick: null,
     trick: [],
     scores: {},
     auction: {
@@ -149,6 +151,7 @@ export const useGameStore = create((set, get) => ({
       winningTeam: data.winningTeam || [],
       top3Players: data.top3Players || [],
       latestTrick: data.latestTrick || null,
+      lastCompletedTrick: data.lastCompletedTrick || null,
 
       phase, // 🔥 SINGLE SOURCE OF TRUTH
 

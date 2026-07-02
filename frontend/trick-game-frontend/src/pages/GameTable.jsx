@@ -41,6 +41,9 @@ export default function GameTable() {
   const [roomLoaded, setRoomLoaded] = useState(false);
   const [displayTurnPlayerId, setDisplayTurnPlayerId] = useState(game.currentTurnPlayerId);
   const [trickResolution, setTrickResolution] = useState(false);
+  const [showLastTrick, setShowLastTrick] = useState(false);
+  const [lastCompletedTrick, setLastCompletedTrick] = useState([]);
+  const prevTrickSnapshotRef = useRef([]);
   const tableAreaRef = useRef(null);
   const trickCenterRef = useRef(null);
   const localPlayAnimatingRef = useRef(false);
@@ -134,6 +137,7 @@ export default function GameTable() {
   // backend may send different formats
   
   const trick = game.trick || game.latestTrick?.playedCards || [];
+  const lastCompletedTrickFromState = game.lastCompletedTrick?.playedCards || [];
   const scores = game.scores || game.playerScores || {};
   const events = game.events || [];
   
@@ -295,17 +299,10 @@ export default function GameTable() {
   }, [game.currentTurnPlayerId, myId]);
 
   useEffect(() => {
-    const currentTrickLength = trick.length;
-    const previousLength = prevTrickLengthForResolutionRef.current;
-    const expectedPlaysPerTrick = Math.max(1, players.length || 6);
-
-    if (currentTrickLength === expectedPlaysPerTrick && previousLength < expectedPlaysPerTrick) {
-      setTrickResolution(true);
-      window.setTimeout(() => setTrickResolution(false), 1400);
+    if (lastCompletedTrickFromState.length > 0) {
+      setLastCompletedTrick(lastCompletedTrickFromState);
     }
-
-    prevTrickLengthForResolutionRef.current = currentTrickLength;
-  }, [trick.length, players.length]);
+  }, [lastCompletedTrickFromState]);
 
   // ---------------- PHASE FLAGS ----------------
   const isAuction = game.phase === "AUCTION";
@@ -353,6 +350,14 @@ export default function GameTable() {
       {/* MAIN TABLE AREA */}
       <div style={styles.tableArea} ref={tableAreaRef}>
 
+        <button
+          type="button"
+          onClick={() => setShowLastTrick((value) => !value)}
+          style={styles.lastTrickToggle}
+        >
+          {showLastTrick ? "✕ Close last trick" : "🃏 Show last trick"}
+        </button>
+
         <CircularTable
           players={players}
           currentTurn={game.currentTurnPlayerId}
@@ -371,6 +376,31 @@ export default function GameTable() {
         {trickResolution && (
           <div style={styles.trickResolutionOverlay}>
             <div style={styles.trickResolutionBadge}>✨ Trick complete</div>
+          </div>
+        )}
+
+        {showLastTrick && (
+          <div style={styles.lastTrickOverlay}>
+            <div style={styles.lastTrickPanel}>
+              <div style={styles.lastTrickHeader}>
+                <div style={styles.lastTrickTitle}>Last trick</div>
+                <button type="button" onClick={() => setShowLastTrick(false)} style={styles.lastTrickClose}>
+                  ×
+                </button>
+              </div>
+              {lastCompletedTrick.length > 0 ? (
+                <div style={styles.lastTrickCards}>
+                  {lastCompletedTrick.map((entry, index) => (
+                    <div key={`${entry.playerId || entry.playerName || index}-${index}`} style={styles.lastTrickCardItem}>
+                      <div style={styles.lastTrickPlayer}>{entry.playerName || "Player"}</div>
+                      <Card card={entry.card} size="small" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.lastTrickEmpty}>No completed trick yet.</div>
+              )}
+            </div>
           </div>
         )}
 
@@ -399,11 +429,17 @@ export default function GameTable() {
 
       {/* BOTTOM HAND */}
       <div style={styles.bottom}>
-        <Hand cards={myHand} onPlayCard={playCard} locked={!isMyTurn || game.phase !== "PLAYING"} />
+        <Hand
+          cards={myHand}
+          onPlayCard={playCard}
+          locked={!isMyTurn || game.phase !== "PLAYING"}
+          currentTrick={trick}
+        />
       </div>
 
       {/* RIGHT SIDEBAR */}
       <div style={styles.sidebar}>
+        <ScoreBoard scores={scores} />
         <EventLog events={events} />
       </div>
 
@@ -512,6 +548,96 @@ const styles = {
     fontWeight: 700,
     boxShadow: "0 12px 28px rgba(0,0,0,0.28)",
     animation: "trickBurst 1.2s ease-out"
+  },
+
+  lastTrickToggle: {
+    position: "absolute",
+    left: "12px",
+    top: "50%",
+    transform: "translateY(-50%)",
+    zIndex: 57,
+    padding: "10px 12px",
+    borderRadius: "12px",
+    border: "1px solid rgba(250, 204, 21, 0.35)",
+    background: "rgba(250, 204, 21, 0.16)",
+    color: "#fef3c7",
+    cursor: "pointer",
+    fontWeight: 700,
+    backdropFilter: "blur(6px)"
+  },
+
+  lastTrickOverlay: {
+    position: "absolute",
+    left: "72px",
+    top: "50%",
+    transform: "translateY(-50%)",
+    zIndex: 56,
+    pointerEvents: "auto"
+  },
+
+  lastTrickPanel: {
+    minWidth: "320px",
+    maxWidth: "420px",
+    padding: "14px",
+    borderRadius: "16px",
+    background: "rgba(15, 23, 42, 0.96)",
+    border: "1px solid rgba(250, 204, 21, 0.28)",
+    boxShadow: "0 16px 36px rgba(2, 8, 23, 0.35)"
+  },
+
+  lastTrickHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "10px"
+  },
+
+  lastTrickTitle: {
+    fontSize: "13px",
+    fontWeight: 800,
+    color: "#fef3c7",
+    marginBottom: "10px",
+    textAlign: "center"
+  },
+
+  lastTrickCards: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "10px",
+    flexWrap: "wrap"
+  },
+
+  lastTrickCardItem: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "6px",
+    padding: "8px",
+    borderRadius: "12px",
+    background: "rgba(30, 41, 59, 0.9)",
+    border: "1px solid rgba(148, 163, 184, 0.16)"
+  },
+
+  lastTrickPlayer: {
+    fontSize: "11px",
+    fontWeight: 700,
+    color: "#f8fafc"
+  },
+
+  lastTrickClose: {
+    border: "none",
+    background: "transparent",
+    color: "#f8fafc",
+    cursor: "pointer",
+    fontSize: "18px",
+    lineHeight: 1
+  },
+
+  lastTrickEmpty: {
+    padding: "10px 0",
+    textAlign: "center",
+    color: "#cbd5e1",
+    fontSize: "12px"
   },
 
   sidebar: {
