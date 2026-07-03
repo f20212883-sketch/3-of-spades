@@ -174,5 +174,10 @@ export const useGameStore = create((set, get) => ({
 
       previous: data
     });
+  },
+
+  // Update only events without triggering full state update
+  updateEvents: (newEvents) => {
+    set({ events: newEvents });
   }
 }));

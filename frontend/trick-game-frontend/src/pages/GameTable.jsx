@@ -100,6 +100,30 @@ export default function GameTable() {
     return () => clearInterval(interval);
   }, [roomId]);
 
+  // ✅ Poll events separately to prevent auto-scroll on log updates
+  useEffect(() => {
+    let pollInterval;
+
+    const pollEvents = async () => {
+      try {
+        const events = await GameService.getEvents(roomId);
+        useGameStore.getState().updateEvents(events);
+      } catch (err) {
+        console.debug("Event polling error:", err);
+      }
+    };
+
+    // Start polling after a short delay
+    const startPolling = setTimeout(() => {
+      pollInterval = setInterval(pollEvents, 4000); // Poll every 4 seconds
+    }, 1000);
+
+    return () => {
+      clearTimeout(startPolling);
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [roomId]);
+
   useEffect(() => {
     const { id: storedId, name: storedName } = getStoredPlayerIdentity();
 

@@ -70,5 +70,11 @@ export const GameService = {
     const res = await API.post(`/rooms/${roomId}/round/next`);
     useGameStore.getState().updateFromResponse(res.data);
     return res.data;
+  },
+
+  // Fetch only events via polling (doesn't update full game state)
+  getEvents: async (roomId) => {
+    const res = await API.get(`/rooms/${roomId}`);
+    return res.data.gameEvents || [];
   }
 };
