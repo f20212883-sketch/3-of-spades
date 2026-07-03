@@ -21,14 +21,17 @@ export default function Home() {
   // CREATE ROOM
   const createRoom = async () => {
     console.log("CREATE ROOM CLICKED");
+
     if (!hostName) return alert("Enter host name");
 
     const res = await API.post("/rooms", {
-      hostName
+      hostName,
     });
 
     console.log("API RESPONSE:", res.data);
+
     savePlayerIdentity(res.data.host?.id, hostName);
+
     const newRoomId = res.data.roomId;
 
     nav(`/lobby/${newRoomId}`);
@@ -41,18 +44,27 @@ export default function Home() {
     }
 
     const res = await API.post(`/rooms/${roomId}/join`, {
-      playerName
+      playerName,
     });
 
-    const joinedPlayerId = res.data.players?.find((p) => p.name === playerName)?.id;
+    const joinedPlayerId = res.data.players?.find(
+      (p) => p.name === playerName
+    )?.id;
+
     savePlayerIdentity(joinedPlayerId, playerName);
+
     nav(`/lobby/${roomId}`);
   };
 
   return (
     <div style={styles.container}>
-
       <h1>🃏 Trick Game</h1>
+
+      <p style={styles.note}>
+        ℹ️ First time? The backend is hosted on Render and may take up to{" "}
+        <strong>30 seconds</strong> to wake up from sleep before creating or
+        joining a room.
+      </p>
 
       {/* CREATE ROOM */}
       <div style={styles.card}>
@@ -98,14 +110,26 @@ export default function Home() {
 
 const styles = {
   container: {
-    height: "100vh",
+    minHeight: "100vh",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     gap: "20px",
     background: "#0f172a",
-    color: "white"
+    color: "white",
+    padding: "20px",
+  },
+
+  note: {
+    maxWidth: "420px",
+    textAlign: "center",
+    fontSize: "14px",
+    color: "#cbd5e1",
+    background: "#1e293b",
+    padding: "10px 14px",
+    borderRadius: "8px",
+    lineHeight: "1.5",
   },
 
   card: {
@@ -115,13 +139,13 @@ const styles = {
     width: "300px",
     display: "flex",
     flexDirection: "column",
-    gap: "10px"
+    gap: "10px",
   },
 
   input: {
     padding: "10px",
     borderRadius: "6px",
-    border: "none"
+    border: "none",
   },
 
   button: {
@@ -130,6 +154,6 @@ const styles = {
     color: "white",
     border: "none",
     cursor: "pointer",
-    borderRadius: "6px"
-  }
+    borderRadius: "6px",
+  },
 };
